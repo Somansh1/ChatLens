@@ -249,7 +249,7 @@ export function AnalysisDashboard({ data, onBack }: AnalysisDashboardProps) {
       </main>
 
       <footer className="border-t border-line px-6 py-5 text-center text-sm text-muted-foreground">
-        Analyzed locally in your browser.{" "}
+        Analyzed locally in your browser. Close this tab and it is gone.{" "}
         <button onClick={onBack} className="font-semibold text-yellow underline-offset-4 hover:underline">
           Analyze another chat
         </button>

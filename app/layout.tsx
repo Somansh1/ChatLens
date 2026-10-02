@@ -1,7 +1,6 @@
 import type React from "react"
 import type { Metadata } from "next"
 import { Bricolage_Grotesque, Instrument_Sans } from "next/font/google"
-import { Analytics } from "@vercel/analytics/next"
 import "./globals.css"
 
 const body = Instrument_Sans({ subsets: ["latin"], variable: "--font-body" })
@@ -30,7 +29,6 @@ export default function RootLayout({
     <html lang="en" className="dark">
       <body className={`font-sans antialiased ${body.variable} ${heavy.variable}`}>
         {children}
-        <Analytics />
       </body>
     </html>
   )

@@ -62,6 +62,32 @@ const steps = [
   { title: "Explore", text: "See who talks more, when, and what you say most." },
 ]
 
+// Each privacy claim is paired with a way for the visitor to confirm it without trusting this page.
+const proofs = [
+  {
+    title: "There is nowhere to send it",
+    text: "ChatLens is a set of static files. There is no backend, no database, no accounts and no analytics script.",
+  },
+  {
+    title: "Your browser enforces it",
+    text: "The site ships a security policy (connect-src 'none') that makes the browser itself refuse any request this page tries to make. Look for the Content-Security-Policy header in your browser's developer tools.",
+  },
+  {
+    title: "Test it offline",
+    text: "Once this page has loaded, switch off Wi-Fi or turn on airplane mode, then drop in your file. The analysis works exactly the same.",
+  },
+  {
+    title: "Watch the network",
+    text: "Open developer tools, go to the Network tab and analyze a chat. No request appears.",
+  },
+  {
+    title: "Nothing is kept",
+    text: "No cookies and no saved data. The analysis lives in this tab's memory and is gone when you close or refresh it.",
+  },
+]
+
+const REPO_URL = "https://github.com/Somansh1/ChatLens"
+
 // Let the browser paint the progress text before the next heavy step runs.
 const tick = (ms = 20) => new Promise((resolve) => setTimeout(resolve, ms))
 
@@ -72,6 +98,19 @@ export function UploadPage({ onAnalysisComplete }: UploadPageProps) {
   const [error, setError] = useState<string | null>(null)
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([])
   const [processingProgress, setProcessingProgress] = useState<string>("")
+  const [online, setOnline] = useState(true)
+
+  // Show when the visitor has gone offline, since the app working offline is the simplest proof it is local.
+  useEffect(() => {
+    const update = () => setOnline(navigator.onLine)
+    update()
+    window.addEventListener("online", update)
+    window.addEventListener("offline", update)
+    return () => {
+      window.removeEventListener("online", update)
+      window.removeEventListener("offline", update)
+    }
+  }, [])
 
   const selectedPlatformData = platforms.find((p) => p.id === selectedPlatform)
 
@@ -175,7 +214,9 @@ export function UploadPage({ onAnalysisComplete }: UploadPageProps) {
       <header className="px-4 py-5 sm:px-8">
         <div className="mx-auto flex max-w-6xl items-center justify-between">
           <Logo />
-          <p className="eyebrow hidden text-muted-foreground sm:block">Runs entirely in your browser</p>
+          <a href="#privacy" className="eyebrow hidden text-muted-foreground underline-offset-4 hover:underline sm:block">
+            {online ? "Nothing leaves your browser · how to check" : "You are offline · it still works"}
+          </a>
         </div>
       </header>
 
@@ -383,11 +424,49 @@ export function UploadPage({ onAnalysisComplete }: UploadPageProps) {
               </div>
             </div>
           </section>
+
+          {/* Privacy: claims the visitor can check for themselves */}
+          <section id="privacy" className="tone-ink block-surface reveal scroll-mt-6 p-6 sm:p-8" style={{ animationDelay: "200ms" }}>
+            <div className="grid gap-8 lg:grid-cols-[1fr_1.3fr]">
+              <div>
+                <p className="eyebrow text-muted-foreground">Privacy</p>
+                <h2 className="display mt-4 text-4xl sm:text-5xl">
+                  Your chat never leaves this device.{" "}
+                  <span className="text-yellow">Don&rsquo;t take this page&rsquo;s word for it.</span>
+                </h2>
+                <p className="mt-5 max-w-md text-muted-foreground">
+                  Chats are about as private as data gets, so every claim here comes with a way to check it yourself.
+                </p>
+                <a
+                  href={REPO_URL}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-6 inline-block font-semibold underline decoration-2 underline-offset-4 hover:text-yellow"
+                >
+                  Read the source code on GitHub
+                </a>
+              </div>
+              <ol>
+                {proofs.map((proof, i) => (
+                  <li key={proof.title} className="flex gap-4 border-t border-line py-4 first:border-t-0 first:pt-0 last:pb-0">
+                    <span className="display w-7 shrink-0 text-2xl text-yellow">{i + 1}</span>
+                    <div>
+                      <p className="font-semibold">{proof.title}</p>
+                      <p className="mt-0.5 text-sm text-muted-foreground">{proof.text}</p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          </section>
         </div>
       </main>
 
       <footer className="border-t border-line px-6 py-5 text-center text-sm text-muted-foreground">
-        Your chats never leave this device. Parsing and analysis run locally in JavaScript.
+        No server, no uploads, no tracking.{" "}
+        <a href="#privacy" className="font-semibold text-cream underline-offset-4 hover:underline">
+          How to check
+        </a>
       </footer>
     </div>
   )
