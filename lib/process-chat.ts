@@ -1144,31 +1144,3 @@ export function analyzeMessages(messages: RawMessage[], platform: Platform, call
     relationshipScores, // Include relationship scores in output
   }
 }
-
-export function processChat(data: unknown, platform: Platform): ChatAnalysis {
-  let messages: RawMessage[]
-  let calls: CallData[] = []
-
-  switch (platform) {
-    case "messenger":
-      messages = parseMessenger(data)
-      calls = extractCallsFromMessenger(data)
-      break
-    case "instagram":
-      messages = parseInstagram(data)
-      calls = extractCallsFromMessenger(data)
-      break
-    case "whatsapp":
-      const parsedContent = parseContent(data, platform)
-      messages = parsedContent.messages
-      calls = parsedContent.calls
-      break
-    case "discord":
-      messages = parseDiscord(data)
-      break
-    default:
-      throw new Error(`Unsupported platform: ${platform}`)
-  }
-
-  return analyzeMessages(messages, platform, calls)
-}
