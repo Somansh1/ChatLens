@@ -13,7 +13,7 @@ const description =
 // Icons and the share image are picked up from app/ by file name (icon.svg, favicon.ico,
 // apple-icon.png, opengraph-image.png). metadataBase makes the share image URL absolute.
 export const metadata: Metadata = {
-  metadataBase: new URL("https://chat-lens-ivory.vercel.app"),
+  metadataBase: new URL("https://chatlens.somansh.in"),
   title,
   description,
   openGraph: { title, description, type: "website", siteName: "ChatLens" },
