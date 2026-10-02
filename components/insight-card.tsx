@@ -1,37 +1,39 @@
-import { Card, CardContent } from "@/components/ui/card"
-import { cn } from "@/lib/utils"
+import { Panel, type Tone } from "@/components/panel"
 
-interface InsightCardProps {
+export interface Award {
   title: string
-  value: string
+  winner: string
   description: string
-  variant?: "rose" | "amber" | "cyan" | "emerald" | "violet"
+  color: string
 }
 
-export function InsightCard({ title, value, description, variant = "rose" }: InsightCardProps) {
-  const variants = {
-    rose: "bg-rose-50 border-rose-200",
-    amber: "bg-amber-50 border-amber-200",
-    cyan: "bg-cyan-50 border-cyan-200",
-    emerald: "bg-emerald-50 border-emerald-200",
-    violet: "bg-violet-50 border-violet-200",
-  }
+interface AwardsProps {
+  awards: Award[]
+  tone?: Tone
+  className?: string
+  delay?: number
+}
 
-  const iconColors = {
-    rose: "text-rose-500",
-    amber: "text-amber-500",
-    cyan: "text-cyan-500",
-    emerald: "text-emerald-500",
-    violet: "text-violet-500",
-  }
-
+// The superlatives as one ruled list, with the winner's name set large in their colour.
+export function Awards({ awards, tone = "ink", className, delay }: AwardsProps) {
   return (
-    <Card className={cn("border shadow-sm", variants[variant])}>
-      <CardContent className="p-5">
-        <p className={cn("text-sm font-medium mb-1", iconColors[variant])}>{title}</p>
-        <p className="text-2xl font-bold mb-2 text-foreground">{value}</p>
-        <p className="text-sm text-muted-foreground">{description}</p>
-      </CardContent>
-    </Card>
+    <Panel title="The awards" tone={tone} className={className} delay={delay}>
+      <ul>
+        {awards.map((award) => (
+          <li
+            key={award.title}
+            className="flex flex-wrap items-end justify-between gap-x-6 gap-y-1 border-t border-line py-4 first:border-t-0 first:pt-0 last:pb-0"
+          >
+            <div className="min-w-0">
+              <p className="text-sm font-semibold">{award.title}</p>
+              <p className="text-sm text-muted-foreground">{award.description}</p>
+            </div>
+            <p className="display text-4xl sm:text-5xl" style={{ color: award.color }}>
+              {award.winner}
+            </p>
+          </li>
+        ))}
+      </ul>
+    </Panel>
   )
 }

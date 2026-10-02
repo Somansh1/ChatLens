@@ -3,81 +3,61 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Light, feminine theme with soft pastels - coral/pink primary, cream backgrounds */
-:root {
-  --background: oklch(0.98 0.005 60);
-  --foreground: oklch(0.25 0.02 300);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.25 0.02 300);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.25 0.02 300);
-  --primary: oklch(0.65 0.18 15);
-  --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(0.95 0.01 300);
-  --secondary-foreground: oklch(0.35 0.02 300);
-  --muted: oklch(0.94 0.01 300);
-  --muted-foreground: oklch(0.5 0.02 300);
-  --accent: oklch(0.7 0.12 330);
-  --accent-foreground: oklch(1 0 0);
-  --destructive: oklch(0.55 0.22 25);
-  --destructive-foreground: oklch(0.98 0 0);
-  --border: oklch(0.9 0.01 300);
-  --input: oklch(0.95 0.01 300);
-  --ring: oklch(0.65 0.18 15);
-  --chart-1: oklch(0.65 0.18 15);
-  --chart-2: oklch(0.7 0.12 330);
-  --chart-3: oklch(0.65 0.15 175);
-  --chart-4: oklch(0.7 0.15 85);
-  --chart-5: oklch(0.6 0.15 270);
-  --radius: 0.75rem;
-  --sidebar: oklch(0.97 0.005 60);
-  --sidebar-foreground: oklch(0.25 0.02 300);
-  --sidebar-primary: oklch(0.65 0.18 15);
-  --sidebar-primary-foreground: oklch(1 0 0);
-  --sidebar-accent: oklch(0.94 0.01 300);
-  --sidebar-accent-foreground: oklch(0.35 0.02 300);
-  --sidebar-border: oklch(0.9 0.01 300);
-  --sidebar-ring: oklch(0.65 0.18 15);
-}
-
+/* Flat colour-block theme. Every surface is a solid fill: no gradients, blur or shadows. */
+:root,
 .dark {
-  --background: oklch(0.98 0.005 60);
-  --foreground: oklch(0.25 0.02 300);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.25 0.02 300);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.25 0.02 300);
-  --primary: oklch(0.65 0.18 15);
-  --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(0.95 0.01 300);
-  --secondary-foreground: oklch(0.35 0.02 300);
-  --muted: oklch(0.94 0.01 300);
-  --muted-foreground: oklch(0.5 0.02 300);
-  --accent: oklch(0.7 0.12 330);
-  --accent-foreground: oklch(1 0 0);
-  --destructive: oklch(0.55 0.22 25);
-  --destructive-foreground: oklch(0.98 0 0);
-  --border: oklch(0.9 0.01 300);
-  --input: oklch(0.95 0.01 300);
-  --ring: oklch(0.65 0.18 15);
-  --chart-1: oklch(0.65 0.18 15);
-  --chart-2: oklch(0.7 0.12 330);
-  --chart-3: oklch(0.65 0.15 175);
-  --chart-4: oklch(0.7 0.15 85);
-  --chart-5: oklch(0.6 0.15 270);
-  --sidebar: oklch(0.97 0.005 60);
-  --sidebar-foreground: oklch(0.25 0.02 300);
-  --sidebar-primary: oklch(0.65 0.18 15);
-  --sidebar-primary-foreground: oklch(1 0 0);
-  --sidebar-accent: oklch(0.94 0.01 300);
-  --sidebar-accent-foreground: oklch(0.35 0.02 300);
-  --sidebar-border: oklch(0.9 0.01 300);
-  --sidebar-ring: oklch(0.65 0.18 15);
+  --ink: #15130f;
+  --cream: #f4eedd;
+  --yellow: #ffd43b;
+  --coral: #ff5a45;
+  --teal: #19b5a5;
+
+  --background: var(--ink);
+  --foreground: var(--cream);
+  --card: #211e18;
+  --card-foreground: var(--cream);
+  --popover: #211e18;
+  --popover-foreground: var(--cream);
+  --primary: var(--yellow);
+  --primary-foreground: var(--ink);
+  --secondary: #2b2720;
+  --secondary-foreground: var(--cream);
+  --muted: #2b2720;
+  --muted-foreground: #a8a190;
+  --accent: var(--yellow);
+  --accent-foreground: var(--ink);
+  --destructive: #ff5a45;
+  --destructive-foreground: var(--ink);
+  --border: rgb(244 238 221 / 0.14);
+  --input: rgb(244 238 221 / 0.14);
+  --ring: var(--yellow);
+  --chart-1: var(--coral);
+  --chart-2: var(--teal);
+  --chart-3: var(--yellow);
+  --chart-4: var(--cream);
+  --chart-5: #a8a190;
+  --radius: 0.75rem;
+  --sidebar: #211e18;
+  --sidebar-foreground: var(--cream);
+  --sidebar-primary: var(--yellow);
+  --sidebar-primary-foreground: var(--ink);
+  --sidebar-accent: #2b2720;
+  --sidebar-accent-foreground: var(--cream);
+  --sidebar-border: rgb(244 238 221 / 0.14);
+  --sidebar-ring: var(--yellow);
+
+  /* Per-surface values, overridden by the .tone-* classes below. --a and --b are the two people. */
+  --a: #ff6a55;
+  --b: #2ccdbb;
+  --line: rgb(244 238 221 / 0.16);
+  --track: rgb(244 238 221 / 0.1);
+  --mark: var(--yellow);
 }
 
 @theme inline {
-  --font-sans: "Inter", "Geist", "Geist Fallback", system-ui, sans-serif;
-  --font-mono: "Geist Mono", "Geist Mono Fallback", monospace;
+  --font-sans: var(--font-body), system-ui, sans-serif;
+  --font-display: var(--font-heavy), var(--font-body), system-ui, sans-serif;
+  --font-mono: ui-monospace, monospace;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -102,8 +82,16 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
+  --color-ink: var(--ink);
+  --color-cream: var(--cream);
+  --color-yellow: var(--yellow);
+  --color-coral: var(--coral);
+  --color-teal: var(--teal);
+  --color-line: var(--line);
+  --color-track: var(--track);
+  --color-mark: var(--mark);
+  --radius-sm: calc(var(--radius) - 6px);
+  --radius-md: calc(var(--radius) - 4px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
   --color-sidebar: var(--sidebar);
@@ -120,7 +108,88 @@
   * {
     @apply border-border outline-ring/50;
   }
+  html {
+    color-scheme: dark;
+  }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+/* Surface tones. Each sets its own text, muted text, rule and track colours,
+   plus versions of the two people colours that stay readable on that fill. */
+.tone-ink {
+  background: #211e18;
+  color: var(--cream);
+}
+.tone-cream,
+.tone-yellow,
+.tone-coral,
+.tone-teal {
+  color: var(--ink);
+  --muted-foreground: rgb(21 19 15 / 0.66);
+  --line: rgb(21 19 15 / 0.18);
+  --track: rgb(21 19 15 / 0.12);
+  --a: #e23f2a;
+  --b: #0b8a7d;
+  --mark: var(--ink);
+}
+.tone-cream {
+  background: var(--cream);
+}
+.tone-yellow {
+  background: var(--yellow);
+}
+.tone-coral {
+  background: var(--coral);
+}
+.tone-teal {
+  background: var(--teal);
+}
+
+.block-surface {
+  border-radius: 1.25rem;
+}
+
+/* Section label: small, wide-tracked caps. */
+.eyebrow {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.display {
+  font-family: var(--font-display);
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 0.92;
+}
+
+.reveal {
+  animation: rise 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+}
+@keyframes grow-x {
+  from {
+    transform: scaleX(0);
+  }
+}
+@keyframes grow-out {
+  from {
+    stroke-dashoffset: var(--len);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal,
+  [style*="grow-"] {
+    animation: none !important;
   }
 }

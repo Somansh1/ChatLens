@@ -1,70 +1,76 @@
-"use client"
+import { Panel, type Tone } from "@/components/panel"
+import { PERSON, firstName } from "@/lib/palette"
+import type { ChatAnalysis } from "@/lib/types"
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Cell, Tooltip } from "recharts"
-import type { MessageStats } from "@/lib/types"
-
-interface MessageDistributionChartProps {
-  data: MessageStats[]
+interface HeadToHeadProps {
+  data: ChatAnalysis
+  tone?: Tone
+  className?: string
+  delay?: number
 }
 
-const COLORS = ["#e11d48", "#8b5cf6"]
+// Mirrored bars comparing the two participants on each metric.
+export function HeadToHead({ data, tone = "cream", className, delay }: HeadToHeadProps) {
+  const [a, b] = data.messageStats
+  if (!a || !b) return null
 
-export function MessageDistributionChart({ data }: MessageDistributionChartProps) {
-  const chartData = data.map((stat) => ({
-    name: stat.sender,
-    messages: stat.count,
-    words: stat.wordCount,
-  }))
-
-  const total = data.reduce((sum, s) => sum + s.count, 0)
+  const rows = [
+    { label: "Messages", values: [a.count, b.count] },
+    { label: "Words", values: [a.wordCount, b.wordCount] },
+    { label: "Words per message", values: [a.avgWordsPerMessage, b.avgWordsPerMessage] },
+    { label: "Emojis", values: [a.emojiCount, b.emojiCount] },
+    {
+      label: "Conversations started",
+      values: [data.conversationStarters[a.sender] || 0, data.conversationStarters[b.sender] || 0],
+    },
+    {
+      label: "Positive messages",
+      values: [data.sentimentBySender[a.sender]?.positive || 0, data.sentimentBySender[b.sender]?.positive || 0],
+      suffix: "%",
+    },
+  ]
 
   return (
-    <Card className="shadow-sm border-border">
-      <CardHeader>
-        <CardTitle>Message Distribution</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="h-[200px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData} layout="vertical" barCategoryGap="20%">
-              <XAxis type="number" hide />
-              <YAxis
-                type="category"
-                dataKey="name"
-                axisLine={false}
-                tickLine={false}
-                tick={{ fill: "#64748b", fontSize: 12 }}
-                width={80}
-              />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: "#ffffff",
-                  border: "1px solid #e2e8f0",
-                  borderRadius: "8px",
-                  boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
-                }}
-                labelStyle={{ color: "#1e293b" }}
-              />
-              <Bar dataKey="messages" radius={[0, 8, 8, 0]}>
-                {chartData.map((_, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+    <Panel title="Head to head" tone={tone} className={className} delay={delay}>
+      <div className="display mb-5 flex justify-between text-3xl sm:text-4xl">
+        <span style={{ color: PERSON[0] }}>{firstName(a.sender)}</span>
+        <span style={{ color: PERSON[1] }}>{firstName(b.sender)}</span>
+      </div>
+      <div className="space-y-4">
+        {rows.map((row) => {
+          const max = Math.max(...row.values, 1)
+          return (
+            <div key={row.label}>
+              <div className="mb-1.5 flex items-baseline justify-between tabular-nums">
+                <span className="font-semibold">
+                  {row.values[0].toLocaleString()}
+                  {row.suffix}
+                </span>
+                <span className="text-xs text-muted-foreground">{row.label}</span>
+                <span className="font-semibold">
+                  {row.values[1].toLocaleString()}
+                  {row.suffix}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-1">
+                {row.values.map((value, i) => (
+                  <div key={i} className={`flex h-3.5 bg-track ${i === 0 ? "justify-end" : ""}`}>
+                    <div
+                      className="h-full"
+                      style={{
+                        width: `${(value / max) * 100}%`,
+                        background: PERSON[i],
+                        transformOrigin: i === 0 ? "right" : "left",
+                        animation: "grow-x 0.9s cubic-bezier(0.2,0.7,0.2,1) both",
+                      }}
+                    />
+                  </div>
                 ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-        <div className="mt-4 grid grid-cols-2 gap-4">
-          {data.map((stat, i) => (
-            <div key={stat.sender} className="text-center p-4 rounded-xl bg-secondary/70 border border-border">
-              <div className="w-3 h-3 rounded-full mx-auto mb-2" style={{ backgroundColor: COLORS[i] }} />
-              <p className="font-semibold text-foreground">{stat.sender}</p>
-              <p className="text-3xl font-bold text-foreground">{((stat.count / total) * 100).toFixed(0)}%</p>
-              <p className="text-sm text-muted-foreground">{stat.count.toLocaleString()} messages</p>
+              </div>
             </div>
-          ))}
-        </div>
-      </CardContent>
-    </Card>
+          )
+        })}
+      </div>
+    </Panel>
   )
 }
