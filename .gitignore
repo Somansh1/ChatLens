@@ -31,3 +31,18 @@ pnpm-debug.log*
 .cache/
 .eslintcache
 .next/
+
+# Build/typescript output
+out/
+*.tsbuildinfo
+
+# Env (all variants)
+.env*
+
+# Deploy
+.vercel
+
+# OS/editor
+Thumbs.db
+Desktop.ini
+*.log
