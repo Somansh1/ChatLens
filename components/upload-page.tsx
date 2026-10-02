@@ -70,7 +70,7 @@ const proofs = [
   },
   {
     title: "Your browser enforces it",
-    text: "The site ships a security policy (connect-src 'none') that makes the browser itself refuse any request this page tries to make. Look for the Content-Security-Policy header in your browser's developer tools.",
+    text: "The site ships a security policy (connect-src 'none') that makes the browser refuse the page's own network calls (fetch, XHR, WebSocket and beacon). Look for the Content-Security-Policy header in your browser's developer tools.",
   },
   {
     title: "Test it offline",
@@ -145,6 +145,7 @@ export function UploadPage({ onAnalysisComplete }: UploadPageProps) {
 
     try {
       const allMessages: Array<{ sender: string; content: string; timestamp: number }> = []
+      const messagesByFile: (typeof allMessages)[] = [] // kept per file so overlapping exports can be de-duplicated
       const allCalls: CallData[] = []
 
       for (let i = 0; i < sources.length; i++) {
@@ -154,6 +155,7 @@ export function UploadPage({ onAnalysisComplete }: UploadPageProps) {
 
         try {
           const { messages, calls } = parseContent(text, platform)
+          messagesByFile.push(messages)
           for (const msg of messages) allMessages.push(msg)
           for (const call of calls) allCalls.push(call)
         } catch (err) {
@@ -168,7 +170,7 @@ export function UploadPage({ onAnalysisComplete }: UploadPageProps) {
       setProcessingProgress(`Analyzing ${allMessages.length.toLocaleString()} messages...`)
       await tick(50)
 
-      const analysis = analyzeMessages(mergeMessages([allMessages]), platform, mergeCalls([allCalls]))
+      const analysis = analyzeMessages(mergeMessages(messagesByFile), platform, mergeCalls([allCalls]))
 
       if (analysis.totalMessages < 10) {
         throw new Error("Not enough messages found. Please make sure you uploaded the correct chat export file(s).")
