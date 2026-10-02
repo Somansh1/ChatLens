@@ -119,7 +119,7 @@ export function ActivityClock({ data, tone = "ink", className, delay }: Activity
           fontSize="34"
           fontWeight="800"
           fill="currentColor"
-          style={{ fontFamily: "var(--font-display)", letterSpacing: "-0.03em" }}
+          style={{ fontFamily: "var(--font-heavy)", letterSpacing: "-0.03em" }}
         >
           {formatHour(shown.hour)}
         </text>
