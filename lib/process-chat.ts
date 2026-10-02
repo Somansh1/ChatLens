@@ -391,58 +391,61 @@ function parseDiscord(data: unknown): RawMessage[] {
   return messages.sort((a, b) => a.timestamp - b.timestamp)
 }
 
-function parseWhatsAppTxt(text: string): RawMessage[] {
-  const messages: RawMessage[] = []
-  // Pattern: MM/DD/YY, HH:MM - Sender: Message
-  // Also handles: DD/MM/YY, HH:MM - Sender: Message
-  const lines = text.split(/\n/)
+// One WhatsApp message line. Covers both export styles:
+//   Android: 15/10/25, 14:17 - Sender: text
+//   iOS:     [10/15/25, 2:17:39 PM] Sender: text
+// Date separators may be / . or -, seconds and AM/PM are optional.
+const WHATSAPP_LINE =
+  /^\[?(\d{1,4})[\/.\-](\d{1,2})[\/.\-](\d{2,4}),?\s+(\d{1,2})[:.](\d{2})(?:[:.](\d{2}))?\s*([ap])?\.?\s*(?:m\.?)?\]?\s*(?:-\s*)?([^:]+?):\s*(.*)$/i
 
-  // Regex for WhatsApp format: date, time - sender: message
-  const messageRegex =
-    /^(\d{1,2}\/\d{1,2}\/\d{2,4}),?\s*(\d{1,2}:\d{2}(?::\d{2})?(?:\s*[AP]M)?)\s*-\s*([^:]+):\s*(.+)$/i
+// A line that starts with a timestamp. One that fails WHATSAPP_LINE has no sender, so it is a system notice.
+const WHATSAPP_STAMP = /^\[?\d{1,4}[\/.\-]\d{1,2}[\/.\-]\d{2,4},?\s+\d{1,2}[:.]\d{2}/
 
+// Placeholder lines WhatsApp writes instead of content.
+const WHATSAPP_NOISE =
+  /^(<Media omitted>|<attached: .+>|(image|video|audio|sticker|GIF|document|Contact card) omitted|This message was deleted\.?|You deleted this message\.?|Messages and calls are end-to-end encrypted.*)$/i
+
+export function parseWhatsAppTxt(text: string): RawMessage[] {
+  // Drop the BOM, the invisible direction marks iOS adds, and the narrow no-break space before AM/PM.
+  const lines = text
+    .replace(/[\uFEFF\u200E\u200F\u202A-\u202E]/g, "")
+    .replace(/[\u202F\u00A0]/g, " ")
+    .split(/\r?\n/)
+
+  const rows: { parts: number[]; pm?: boolean; am?: boolean; sender: string; content: string }[] = []
   for (const line of lines) {
-    const trimmedLine = line.trim()
-    if (!trimmedLine) continue
-
-    const match = trimmedLine.match(messageRegex)
+    const match = line.trim().match(WHATSAPP_LINE)
     if (match) {
-      const [, dateStr, timeStr, sender, content] = match
-
-      // Skip system messages
-      if (content.includes("Messages and calls are end-to-end encrypted")) continue
-      if (content === "<Media omitted>") continue
-      if (sender.toLowerCase().includes("system")) continue
-
-      // Parse date - try different formats
-      let timestamp: number
-      try {
-        // Try MM/DD/YY format first, then DD/MM/YY
-        const parts = dateStr.split("/")
-        const [p1, p2, year] = parts.map((p) => Number.parseInt(p))
-        const fullYear = year < 100 ? 2000 + year : year
-
-        // Assume MM/DD/YY for US format
-        let dateObj = new Date(
-          `${fullYear}-${p1.toString().padStart(2, "0")}-${p2.toString().padStart(2, "0")} ${timeStr}`,
-        )
-        if (isNaN(dateObj.getTime())) {
-          // Try DD/MM/YY
-          dateObj = new Date(
-            `${fullYear}-${p2.toString().padStart(2, "0")}-${p1.toString().padStart(2, "0")} ${timeStr}`,
-          )
-        }
-        timestamp = dateObj.getTime() || Date.now()
-      } catch {
-        timestamp = Date.now()
-      }
-
-      messages.push({
+      const [, d1, d2, d3, hh, mm, ss, meridiem, sender, content] = match
+      rows.push({
+        parts: [Number(d1), Number(d2), Number(d3), Number(hh), Number(mm), Number(ss || 0)],
+        pm: meridiem?.toLowerCase() === "p",
+        am: meridiem?.toLowerCase() === "a",
         sender: sender.trim(),
         content: content.trim(),
-        timestamp,
       })
+    } else if (rows.length > 0 && line.trim() && !WHATSAPP_STAMP.test(line.trim())) {
+      // A line without a timestamp continues the previous message.
+      rows[rows.length - 1].content += `\n${line.trim()}`
     }
+  }
+
+  // Exports use the phone's date order. A value above 12 can only be a day, which settles it for the
+  // whole file; if every date is ambiguous, assume month first.
+  const dayFirst = rows.some((r) => r.parts[0] > 12 && r.parts[0] <= 31) && !rows.some((r) => r.parts[1] > 12)
+  const yearFirst = rows.some((r) => r.parts[0] > 31)
+
+  const messages: RawMessage[] = []
+  for (const row of rows) {
+    if (!row.content || WHATSAPP_NOISE.test(row.content)) continue
+
+    const [a, b, c, hh, mm, ss] = row.parts
+    const [year, month, day] = yearFirst ? [a, b, c] : dayFirst ? [c, b, a] : [c, a, b]
+    const hour = row.pm ? (hh % 12) + 12 : row.am ? hh % 12 : hh
+    const timestamp = new Date(year < 100 ? 2000 + year : year, month - 1, day, hour, mm, ss).getTime()
+    if (Number.isNaN(timestamp)) continue
+
+    messages.push({ sender: row.sender, content: row.content, timestamp })
   }
 
   return messages.sort((a, b) => a.timestamp - b.timestamp)
@@ -787,7 +790,8 @@ function calculateRelationshipScores(
 export function parseContent(content: string, platform: Platform): { messages: RawMessage[]; calls: CallData[] } {
   // Try to detect if it's WhatsApp TXT format
   if (platform === "whatsapp") {
-    const looksLikeTxt = /^\d{1,2}\/\d{1,2}\/\d{2,4},?\s*\d{1,2}:\d{2}/.test(content.trim())
+    // A JSON export starts with a brace or bracket followed by JSON; anything else is the text export.
+    const looksLikeTxt = !/^\s*[{\[]\s*["{\[\]}]/.test(content)
     if (looksLikeTxt) {
       return { messages: parseWhatsAppTxt(content), calls: [] }
     }
