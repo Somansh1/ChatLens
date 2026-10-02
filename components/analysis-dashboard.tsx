@@ -21,14 +21,6 @@ interface AnalysisDashboardProps {
 const PLATFORM_NAMES = { whatsapp: "WhatsApp", instagram: "Instagram", messenger: "Messenger", discord: "Discord" }
 const HERO_TONES = ["coral", "teal"] as const
 
-function formatDuration(seconds: number): string {
-  if (seconds < 60) return `${seconds}s`
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}m`
-  const hours = Math.floor(seconds / 3600)
-  const mins = Math.floor((seconds % 3600) / 60)
-  return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`
-}
-
 export function AnalysisDashboard({ data, onBack }: AnalysisDashboardProps) {
   const totalMessages = data.totalMessages
   const messagesPerDay = (totalMessages / data.totalDays).toFixed(1)
@@ -126,25 +118,16 @@ export function AnalysisDashboard({ data, onBack }: AnalysisDashboardProps) {
               tone="yellow"
               delay={180}
             />
-            {data.callInsights ? (
-              <StatCard
-                title="Total call time"
-                value={formatDuration(data.callInsights.totalDuration)}
-                subtitle={`${data.callInsights.totalCalls} calls made`}
-                tone="ink"
-                delay={240}
-              />
-            ) : (
-              <StatCard
-                title="Avg response time"
-                value={`${data.avgResponseTime} min`}
-                subtitle={
-                  data.avgResponseTime < 5 ? "Lightning fast" : data.avgResponseTime < 15 ? "Pretty quick" : "Taking your time"
-                }
-                tone="ink"
-                delay={240}
-              />
-            )}
+            {/* Call time lives in the call panel below ("Total talk time"), so this slot is always response time. */}
+            <StatCard
+              title="Avg response time"
+              value={`${data.avgResponseTime} min`}
+              subtitle={
+                data.avgResponseTime < 5 ? "Lightning fast" : data.avgResponseTime < 15 ? "Pretty quick" : "Taking your time"
+              }
+              tone="ink"
+              delay={240}
+            />
           </div>
 
           <div className="grid gap-3 lg:grid-cols-12">
