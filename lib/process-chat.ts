@@ -19,6 +19,25 @@ interface RawMessage {
   callType?: "audio" | "video"
 }
 
+const DAY_MS = 24 * 60 * 60 * 1000
+
+// Calendar-day helpers. Day keys are local dates (YYYY-MM-DD), the same clock getHours() uses, so
+// "which day" and "which hour" always agree. Date.UTC is used only to count days between two keys
+// without daylight-saving shifts.
+const pad2 = (n: number) => String(n).padStart(2, "0")
+const dayKey = (ts: number) => {
+  const d = new Date(ts)
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`
+}
+const dayNumber = (key: string) => {
+  const [y, m, d] = key.split("-").map(Number)
+  return Date.UTC(y, m - 1, d) / DAY_MS
+}
+const formatDay = (key: string) => {
+  const [y, m, d] = key.split("-").map(Number)
+  return new Date(y, m - 1, d).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })
+}
+
 // Common stop words to filter from signature phrases
 const STOPWORDS = new Set([
   "the",
@@ -630,6 +649,7 @@ function calculateRelationshipScores(
 ): RelationshipScores | undefined {
   if (messageStats.length < 2) return undefined
 
+  // messageStats and participants share one order (most messages first), so A is the top sender.
   const participants = messageStats.map((s) => s.sender)
 
   // Calculate Vibe Check Score (0-100)
@@ -701,19 +721,13 @@ function calculateRelationshipScores(
     }
   }
 
-  const firstDate = new Date(sortedDates[0])
-  const lastDate = new Date(sortedDates[sortedDates.length - 1])
-  const daySpan = Math.ceil((lastDate.getTime() - firstDate.getTime()) / (1000 * 60 * 60 * 24)) + 1
+  const daySpan = dayNumber(sortedDates[sortedDates.length - 1]) - dayNumber(sortedDates[0]) + 1
   const consistencyScore = Math.round((totalDays / daySpan) * 100)
 
   // Current streak
   let currentStreak = 1
-  const today = new Date().toISOString().split("T")[0]
   for (let i = sortedDates.length - 1; i > 0; i--) {
-    const currDate = new Date(sortedDates[i])
-    const prevDate = new Date(sortedDates[i - 1])
-    const diffDays = (currDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24)
-    if (diffDays === 1) {
+    if (dayNumber(sortedDates[i]) - dayNumber(sortedDates[i - 1]) === 1) {
       currentStreak++
     } else {
       break
@@ -831,30 +845,29 @@ export function parseContent(content: string, platform: Platform): { messages: R
   }
 }
 
-export function mergeMessages(allMessages: RawMessage[][]): RawMessage[] {
-  const merged: RawMessage[] = []
-  for (const arr of allMessages) {
-    for (const msg of arr) {
-      merged.push(msg)
+// Overlapping exports can contain the same message twice, but one file can also hold a real repeat
+// (the same text sent twice in a minute, and exports without seconds cannot tell those apart).
+// So an identical message (sender, timestamp, text) is counted per file and the largest count from
+// any single file is kept: repeats within a file survive, copies across files collapse.
+// ponytail: if two overlapping files each hold only part of a repeat run, the larger part wins.
+export function mergeMessages(files: RawMessage[][]): RawMessage[] {
+  const kept = new Map<string, RawMessage[]>()
+  for (const file of files) {
+    const inFile = new Map<string, RawMessage[]>()
+    for (const msg of file) {
+      const key = JSON.stringify([msg.timestamp, msg.sender, msg.content])
+      const group = inFile.get(key)
+      if (group) group.push(msg)
+      else inFile.set(key, [msg])
+    }
+    for (const [key, group] of inFile) {
+      if (group.length > (kept.get(key)?.length ?? 0)) kept.set(key, group)
     }
   }
 
-  // Sort by timestamp
-  merged.sort((a, b) => a.timestamp - b.timestamp)
-
-  // Remove duplicates iteratively
-  const seen = new Set<string>()
-  const unique: RawMessage[] = []
-
-  for (const msg of merged) {
-    const key = `${msg.timestamp}-${msg.sender}-${msg.content.slice(0, 50)}`
-    if (!seen.has(key)) {
-      seen.add(key)
-      unique.push(msg)
-    }
-  }
-
-  return unique
+  return Array.from(kept.values())
+    .flat()
+    .sort((a, b) => a.timestamp - b.timestamp)
 }
 
 export function mergeCalls(allCalls: CallData[][]): CallData[] {
@@ -887,11 +900,15 @@ export function analyzeMessages(messages: RawMessage[], platform: Platform, call
     throw new Error("No messages found in the file(s). Please check the format.")
   }
 
-  const participantSet = new Set<string>()
+  // One order for the whole result: most messages first (ties keep first-appearance order). Every
+  // list the UI pairs by position (participants, messageStats, peak hours, colours) follows it.
+  const senderCounts = new Map<string, number>()
   for (const m of messages) {
-    participantSet.add(m.sender)
+    senderCounts.set(m.sender, (senderCounts.get(m.sender) || 0) + 1)
   }
-  const participants = Array.from(participantSet).slice(0, 10)
+  const participants = Array.from(senderCounts.keys())
+    .sort((a, b) => senderCounts.get(b)! - senderCounts.get(a)!)
+    .slice(0, 10)
 
   let minTimestamp = messages[0].timestamp
   let maxTimestamp = messages[0].timestamp
@@ -966,7 +983,7 @@ export function analyzeMessages(messages: RawMessage[], platform: Platform, call
     const hour = new Date(msg.timestamp).getHours()
     hourlyMap.set(hour, (hourlyMap.get(hour) || 0) + 1)
 
-    const dateKey = new Date(msg.timestamp).toISOString().split("T")[0]
+    const dateKey = dayKey(msg.timestamp)
     dailyMessages.set(dateKey, (dailyMessages.get(dateKey) || 0) + 1)
 
     // Extract emojis - sample for large files
@@ -986,18 +1003,16 @@ export function analyzeMessages(messages: RawMessage[], platform: Platform, call
     prevSender = msg.sender
   }
 
-  const messageStats: MessageStats[] = participants
-    .map((sender) => {
-      const stats = statsMap.get(sender)!
-      return {
-        sender,
-        count: stats.count,
-        wordCount: stats.wordCount,
-        avgWordsPerMessage: stats.count > 0 ? Math.round((stats.wordCount / stats.count) * 10) / 10 : 0,
-        emojiCount: stats.emojiCount,
-      }
-    })
-    .sort((a, b) => b.count - a.count)
+  const messageStats: MessageStats[] = participants.map((sender) => {
+    const stats = statsMap.get(sender)!
+    return {
+      sender,
+      count: stats.count,
+      wordCount: stats.wordCount,
+      avgWordsPerMessage: stats.count > 0 ? Math.round((stats.wordCount / stats.count) * 10) / 10 : 0,
+      emojiCount: stats.emojiCount,
+    }
+  })
 
   const sentimentBySender: Record<string, SentimentData> = {}
   for (const [sender, stats] of statsMap) {
@@ -1018,8 +1033,10 @@ export function analyzeMessages(messages: RawMessage[], platform: Platform, call
     hourlyActivity.push({ hour: h, count: hourlyMap.get(h) || 0 })
   }
 
+  const shown = participants.slice(0, 2)
   const allPhrases: SignaturePhrase[] = []
   for (const [sender, stats] of statsMap) {
+    if (!shown.includes(sender)) continue // only the two people the UI colours
     const phraseEntries: [string, number][] = []
     for (const [phrase, count] of stats.phrases) {
       if (count >= 3 && phrase.length > 3) {
@@ -1043,11 +1060,7 @@ export function analyzeMessages(messages: RawMessage[], platform: Platform, call
   let longestStreakEnd = streakStart
 
   for (let i = 1; i < sortedDates.length; i++) {
-    const prevDate = new Date(sortedDates[i - 1])
-    const currDate = new Date(sortedDates[i])
-    const diffDays = (currDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24)
-
-    if (diffDays === 1) {
+    if (dayNumber(sortedDates[i]) - dayNumber(sortedDates[i - 1]) === 1) {
       currentStreak++
     } else {
       if (currentStreak > longestStreak) {
@@ -1073,6 +1086,10 @@ export function analyzeMessages(messages: RawMessage[], platform: Platform, call
     topEmojis.push({ emoji, count })
   }
 
+  // Average response time, in minutes. It covers only the first 2,000 messages (all senders, calls
+  // included). A reply is any message whose sender differs from the one before it, and only gaps
+  // longer than 0 and shorter than 60 minutes count; longer gaps are treated as a new conversation,
+  // not a slow reply. With no qualifying gap it falls back to 5.
   let totalResponseTime = 0
   let responseCount = 0
   const sampleSize = Math.min(messages.length, 2000)
@@ -1099,11 +1116,6 @@ export function analyzeMessages(messages: RawMessage[], platform: Platform, call
     }
   }
 
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr)
-    return date.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })
-  }
-
   const callInsights = calls && calls.length > 0 ? analyzeCallData(calls, participants) : undefined
 
   const relationshipScores = calculateRelationshipScores(
@@ -1117,10 +1129,10 @@ export function analyzeMessages(messages: RawMessage[], platform: Platform, call
 
   return {
     platform,
-    participants: participants.slice(0, 2),
+    participants: shown,
     dateRange: {
-      start: formatDate(startDate.toISOString().split("T")[0]),
-      end: formatDate(endDate.toISOString().split("T")[0]),
+      start: formatDay(dayKey(minTimestamp)),
+      end: formatDay(dayKey(maxTimestamp)),
     },
     totalMessages: messages.length,
     totalDays,
@@ -1130,14 +1142,14 @@ export function analyzeMessages(messages: RawMessage[], platform: Platform, call
     signaturePhrases,
     longestStreak: {
       days: longestStreak,
-      startDate: formatDate(longestStreakStart),
-      endDate: formatDate(longestStreakEnd),
+      startDate: formatDay(longestStreakStart),
+      endDate: formatDay(longestStreakEnd),
     },
     topEmojis,
     avgResponseTime,
     conversationStarters,
     busiestDay: {
-      date: formatDate(busiestDay.date),
+      date: formatDay(busiestDay.date),
       count: busiestDay.count,
     },
     callInsights,

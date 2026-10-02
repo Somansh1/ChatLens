@@ -74,6 +74,8 @@ export interface RelationshipScores {
 
 export interface ChatAnalysis {
   platform: Platform
+  // participants and messageStats share one order (most messages first). Every per-person pairing,
+  // including peakHourA/B and the UI colours, follows it: index 0 is the top sender.
   participants: string[]
   dateRange: {
     start: string

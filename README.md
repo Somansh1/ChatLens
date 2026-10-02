@@ -2,8 +2,8 @@
 
 ChatLens analyses a chat export from WhatsApp, Instagram or Messenger and shows who talks more, when you talk, how fast you reply, how long your streaks run and a few playful scores. All of the work happens in your browser. The site is static, has no backend, and your chat file is never uploaded anywhere.
 
-Live demo: https://chat-lens-ivory.vercel.app
-Sample analysis without uploading anything: https://chat-lens-ivory.vercel.app/?demo
+Live demo: https://chatlens.somansh.in
+Sample analysis without uploading anything: https://chatlens.somansh.in/?demo
 
 ![Landing page](docs/landing.png)
 
@@ -24,13 +24,13 @@ Sample analysis without uploading anything: https://chat-lens-ivory.vercel.app/?
 - The app is a static Next.js site. There is no server code and no database.
 - There are no analytics, trackers or third-party scripts.
 - Nothing is stored. The chat is read into memory, analysed, and gone when you close or reload the tab. There is no localStorage, cookie or upload.
-- The site sends a Content-Security-Policy with `connect-src 'none'`, so the browser itself refuses any fetch, XHR, WebSocket or beacon the page tries to make. It also sets `form-action 'none'` and `default-src 'self'`. The policy is in [`next.config.mjs`](next.config.mjs). It is applied to production builds only, because the dev server needs a WebSocket for hot reload.
+- The site sends a Content-Security-Policy with `connect-src 'none'`, so the browser refuses the page's own network calls (fetch, XHR, WebSocket and beacon). It also sets `form-action 'none'` and `default-src 'self'`. The policy is in [`next.config.mjs`](next.config.mjs). It is applied to production builds only, because the dev server needs a WebSocket for hot reload.
 
 You do not have to take this on trust:
 
 1. Offline test: load the page, disconnect from the network, then analyse a chat. It works the same.
 2. Network tab: open your browser's developer tools, go to Network, and analyse a chat. No request is made while or after you pick a file.
-3. CSP header: in the Network tab, click the document request and read the `Content-Security-Policy` response header, or run `curl -I https://chat-lens-ivory.vercel.app`.
+3. CSP header: in the Network tab, click the document request and read the `Content-Security-Policy` response header, or run `curl -I https://chatlens.somansh.in`.
 
 ## Supported formats
 
@@ -69,12 +69,13 @@ npm run check        # parser self-check
 
 ## How it works
 
+- Multi-file exports (Instagram, Messenger) are de-duplicated across files only; a message repeated within one file is kept.
 - Parsing (`lib/process-chat.ts`): each platform has a parser that turns the file into a flat list of `{ sender, content, timestamp }`. WhatsApp text is matched line by line with a regular expression that accepts both export styles and several date separators. Instagram and Messenger JSON is read from the `messages` array; call records are pulled out separately.
 - Sentiment: a word list. Each message is lowercased and its words are checked against a positive list and a negative list (plus a few emoticons). More positive hits makes the message positive, more negative hits makes it negative, otherwise neutral.
-- Streaks: messages are grouped by calendar day, and the longest run of consecutive days with at least one message is reported.
-- Response time: for consecutive messages from different people, the gap is counted as a reply if it is under 60 minutes, and the average is taken. Only the first 2,000 messages are used.
+- Streaks: messages are grouped by calendar day in your browser's time zone, and the longest run of consecutive days with at least one message is reported.
+- Response time: for consecutive messages from different people (all senders, calls included), the gap counts as a reply if it is longer than 0 and under 60 minutes, and the average is taken. Longer gaps are treated as a new conversation, not a slow reply. Only the first 2,000 messages are used, and if no gap qualifies it shows 5 minutes. When a chat has calls, response time is still shown; call time is in the call panel.
 - Signature phrases: words longer than two letters that are not stop words, plus adjacent word pairs, counted per person. Large chats are sampled (every 3rd, 5th or 10th message depending on size), and a phrase needs at least 3 occurrences.
-- Scores: the vibe check combines message balance (30%), positive sentiment share (50%) and emoji use (up to 20%). The other labels come from simple thresholds on the same numbers.
+- Scores: the vibe check combines message balance (30%), positive sentiment share (50%) and emoji use (up to 20%), averaged over the whole chat. The other labels come from simple thresholds on the same numbers.
 
 ## Limitations
 
