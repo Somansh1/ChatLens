@@ -49,7 +49,7 @@ export function VibePanel({ data, tone = "yellow", className, delay }: ScoreProp
         ))}
       </dl>
       <p className="relative mt-4 text-xs text-muted-foreground">
-        A playful score from positivity, balance and consistency. Not a scientific measure.
+        A playful score from message balance, positive wording and emoji use. Not a scientific measure.
       </p>
     </Panel>
   )
@@ -97,7 +97,9 @@ export function HeatmapPanel({ data, tone = "ink", className, delay }: ScoreProp
   if (keys.length === 0) return null
   const max = Math.max(...Object.values(data.dailyActivityMap), 1)
 
-  // Build whole weeks (Sunday first) ending on the week of the last message.
+  // Build whole weeks (Sunday first) ending on the week of the last message. The keys are local calendar
+  // dates; they are read as plain dates (UTC midnight is only a way to do date arithmetic, with no
+  // time-zone or daylight-saving shift), so the grid shows the same days the analysis counted.
   const last = new Date(`${keys[keys.length - 1]}T00:00:00Z`)
   const end = last.getTime() + (6 - last.getUTCDay()) * DAY
   const weeks = Array.from({ length: WEEKS }, (_, w) =>
