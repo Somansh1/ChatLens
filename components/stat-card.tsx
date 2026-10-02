@@ -1,96 +1,65 @@
 "use client"
 
-import type React from "react"
-
-import { useEffect, useState, useRef } from "react"
-import { Card, CardContent } from "@/components/ui/card"
+import { useEffect, useState } from "react"
 import { cn } from "@/lib/utils"
+import type { Tone } from "@/components/panel"
 
 interface StatCardProps {
   title: string
   value: string | number
   subtitle: string
-  icon: React.ReactNode
-  color?: "primary" | "accent" | "chart-1" | "chart-2" | "chart-3" | "chart-4" | "chart-5"
+  tone?: Tone
+  className?: string
+  delay?: number
 }
 
-export function StatCard({ title, value, subtitle, icon, color = "primary" }: StatCardProps) {
-  const [displayValue, setDisplayValue] = useState<string | number>(typeof value === "number" ? 0 : value)
-  const [isVisible, setIsVisible] = useState(false)
-  const cardRef = useRef<HTMLDivElement>(null)
+// Counts up to the leading number in `value` and keeps any suffix ("12 days", "3.4 min").
+function useCountUp(value: string | number) {
+  const text = String(value)
+  const match = text.match(/^[\d,]*\.?\d+/)
+  const target = match ? Number.parseFloat(match[0].replace(/,/g, "")) : null
+  const [current, setCurrent] = useState(target === null ? null : 0)
 
   useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsVisible(true)
-          observer.disconnect()
-        }
-      },
-      { threshold: 0.1 },
-    )
-
-    if (cardRef.current) {
-      observer.observe(cardRef.current)
+    if (target === null) return
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setCurrent(target)
+      return
     }
+    const start = performance.now()
+    let frame = requestAnimationFrame(function step(now) {
+      const t = Math.min(1, (now - start) / 1200)
+      setCurrent(target * (1 - Math.pow(1 - t, 3)))
+      if (t < 1) frame = requestAnimationFrame(step)
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [target])
 
-    return () => observer.disconnect()
-  }, [])
-
-  useEffect(() => {
-    if (!isVisible) return
-
-    const numericValue = typeof value === "string" ? Number.parseFloat(value.replace(/,/g, "")) : value
-
-    if (typeof numericValue === "number" && !isNaN(numericValue)) {
-      const duration = 1500
-      const steps = 60
-      const stepTime = duration / steps
-      const increment = numericValue / steps
-      let current = 0
-
-      const timer = setInterval(() => {
-        current += increment
-        if (current >= numericValue) {
-          setDisplayValue(value)
-          clearInterval(timer)
-        } else {
-          if (typeof value === "string" && value.includes(",")) {
-            setDisplayValue(Math.floor(current).toLocaleString())
-          } else if (typeof value === "string" && value.includes(".")) {
-            setDisplayValue(current.toFixed(1))
-          } else {
-            setDisplayValue(Math.floor(current).toLocaleString())
-          }
-        }
-      }, stepTime)
-
-      return () => clearInterval(timer)
-    } else {
-      setDisplayValue(value)
-    }
-  }, [value, isVisible])
-
-  const colorClasses = {
-    primary: "bg-rose-100 text-rose-600",
-    accent: "bg-pink-100 text-pink-600",
-    "chart-1": "bg-rose-100 text-rose-600",
-    "chart-2": "bg-violet-100 text-violet-600",
-    "chart-3": "bg-teal-100 text-teal-600",
-    "chart-4": "bg-amber-100 text-amber-600",
-    "chart-5": "bg-indigo-100 text-indigo-600",
+  if (target === null || current === null || !match) return { number: text, unit: "" }
+  const decimals = match[0].includes(".") ? 1 : 0
+  return {
+    number: current.toLocaleString("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals }),
+    unit: text.slice(match[0].length).trim(),
   }
+}
+
+// One oversized number on a flat colour block.
+export function StatCard({ title, value, subtitle, tone = "cream", className, delay = 0 }: StatCardProps) {
+  const { number, unit } = useCountUp(value)
 
   return (
-    <Card ref={cardRef} className="overflow-hidden shadow-sm border-border">
-      <CardContent className="p-5">
-        <div className="flex items-start justify-between mb-3">
-          <p className="text-sm font-medium text-muted-foreground">{title}</p>
-          <div className={cn("h-9 w-9 rounded-xl flex items-center justify-center", colorClasses[color])}>{icon}</div>
-        </div>
-        <p className="text-3xl font-bold tracking-tight text-foreground">{displayValue}</p>
-        <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>
-      </CardContent>
-    </Card>
+    <div
+      className={cn(`tone-${tone} block-surface reveal flex min-h-44 flex-col justify-between p-5 sm:p-6`, className)}
+      style={{ animationDelay: `${delay}ms` }}
+    >
+      <p className="eyebrow">{title}</p>
+      <div>
+        <p className="display text-5xl tabular-nums sm:text-6xl">
+          {number}
+          {unit && <span className="ml-1.5 text-2xl sm:text-3xl">{unit}</span>}
+        </p>
+        <p className="mt-2 text-sm text-muted-foreground">{subtitle}</p>
+      </div>
+    </div>
   )
 }

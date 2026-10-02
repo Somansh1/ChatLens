@@ -1,41 +1,33 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Panel, type Tone } from "@/components/panel"
 
 interface TopEmojisCardProps {
   emojis: { emoji: string; count: number }[]
+  tone?: Tone
+  className?: string
+  delay?: number
 }
 
-export function TopEmojisCard({ emojis }: TopEmojisCardProps) {
+export function TopEmojisCard({ emojis, tone = "yellow", className, delay }: TopEmojisCardProps) {
   if (emojis.length === 0) return null
-
-  const maxCount = emojis[0]?.count || 1
+  const maxCount = emojis[0].count || 1
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Most Used Emojis</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="flex flex-wrap gap-4 justify-center">
-          {emojis.map((item, index) => (
-            <div
-              key={item.emoji}
-              className="flex flex-col items-center gap-2 p-4 rounded-xl bg-secondary/50 min-w-[80px]"
-            >
-              <span className="text-4xl">{item.emoji}</span>
-              <div className="text-center">
-                <p className="font-semibold">{item.count.toLocaleString()}</p>
-                <p className="text-xs text-muted-foreground">{index === 0 ? "Top emoji!" : `#${index + 1}`}</p>
-              </div>
-              <div className="w-full h-1 bg-secondary rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-primary rounded-full"
-                  style={{ width: `${(item.count / maxCount) * 100}%` }}
-                />
-              </div>
+    <Panel title="Most used emojis" tone={tone} className={className} delay={delay}>
+      <div className="flex flex-wrap items-end gap-x-8 gap-y-4 lg:justify-between">
+        {emojis.map((item) => {
+          // U+FE0F below asks for the colour glyph; the parser strips it, which turns hearts into outlines.
+          // Scale each emoji by how often it is used, so the top one is visibly the biggest.
+          const size = 2.5 + (item.count / maxCount) * 5
+          return (
+            <div key={item.emoji} className="flex flex-col items-center gap-1">
+              <span style={{ fontSize: `${size}rem`, lineHeight: 1.1 }}>
+                {item.emoji + String.fromCharCode(0xfe0f)}
+              </span>
+              <span className="text-sm font-semibold tabular-nums">{item.count.toLocaleString()}</span>
             </div>
-          ))}
-        </div>
-      </CardContent>
-    </Card>
+          )
+        })}
+      </div>
+    </Panel>
   )
 }

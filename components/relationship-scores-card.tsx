@@ -1,199 +1,202 @@
 "use client"
 
-import { Heart, Sparkles, Calendar, Clock, Zap } from "lucide-react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { useState } from "react"
+import { Panel, Shape, Tag, type Tone } from "@/components/panel"
+import { PERSON, firstName, formatHour } from "@/lib/palette"
 import type { RelationshipScores } from "@/lib/types"
 
-interface RelationshipScoresCardProps {
+interface ScoreProps {
   data: RelationshipScores
   participants: string[]
+  tone?: Tone
+  className?: string
+  delay?: number
 }
 
-function formatHour(hour: number): string {
-  if (hour === 0) return "12am"
-  if (hour === 12) return "12pm"
-  return hour < 12 ? `${hour}am` : `${hour - 12}pm`
-}
-
-export function RelationshipScoresCard({ data, participants }: RelationshipScoresCardProps) {
-  // Generate mini heatmap data (last 30 days or available data)
-  const sortedDates = Object.keys(data.dailyActivityMap).sort().slice(-35)
-  const maxActivity = Math.max(...Object.values(data.dailyActivityMap), 1)
-
-  const getIntensityClass = (count: number) => {
-    if (count === 0) return "bg-muted/30"
-    const ratio = count / maxActivity
-    if (ratio > 0.75) return "bg-primary"
-    if (ratio > 0.5) return "bg-primary/70"
-    if (ratio > 0.25) return "bg-primary/40"
-    return "bg-primary/20"
-  }
+// The score is the artwork: one huge numeral with a flat progress bar under it.
+export function VibePanel({ data, tone = "yellow", className, delay }: ScoreProps) {
+  const style = data.communicationStyle
+  const facts = [
+    { label: "Love language", value: style.loveLanguage },
+    { label: "Message style", value: style.avgMessageLength },
+    { label: "Emoji usage", value: style.emojiUsage },
+    ...(style.callVsText > 0 ? [{ label: "Calls vs text", value: `${style.callVsText}%` }] : []),
+  ]
 
   return (
-    <Card className="shadow-sm border-border">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-lg">
-          <Heart className="h-5 w-5 text-primary" />
-          Relationship Insights
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {/* Top Row - Main Scores */}
-        <div className="grid grid-cols-2 gap-4">
-          {/* Vibe Check Score */}
-          <div className="p-5 rounded-2xl bg-gradient-to-br from-pink-50 via-rose-50 to-orange-50 border border-pink-200 text-center">
-            <div className="flex items-center justify-center gap-2 mb-2">
-              <Sparkles className="h-5 w-5 text-pink-500" />
-              <span className="text-sm font-medium text-pink-700">Vibe Check</span>
-            </div>
-            <div className="relative inline-flex items-center justify-center">
-              <svg className="w-24 h-24 transform -rotate-90">
-                <circle cx="48" cy="48" r="40" stroke="#fce7f3" strokeWidth="8" fill="none" />
-                <circle
-                  cx="48"
-                  cy="48"
-                  r="40"
-                  stroke="url(#vibeGradient)"
-                  strokeWidth="8"
-                  fill="none"
-                  strokeLinecap="round"
-                  strokeDasharray={`${data.vibeCheckScore * 2.51} 251`}
-                />
-                <defs>
-                  <linearGradient id="vibeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                    <stop offset="0%" stopColor="#ec4899" />
-                    <stop offset="100%" stopColor="#f97316" />
-                  </linearGradient>
-                </defs>
-              </svg>
-              <span className="absolute text-2xl font-bold text-pink-600">{data.vibeCheckScore}</span>
-            </div>
-            <p className="text-sm font-semibold text-pink-600 mt-2">{data.vibeRating}</p>
+    <Panel title="Vibe check" aside={<Tag>{data.vibeRating}</Tag>} tone={tone} className={className} delay={delay}>
+      <Shape kind="burst" className="-bottom-12 -right-12 size-44 opacity-15" />
+      <p className="display text-[7rem] tabular-nums sm:text-[9rem]" aria-label={`Score ${data.vibeCheckScore} out of 100`}>
+        {data.vibeCheckScore}
+        <span className="ml-2 text-2xl font-semibold tracking-normal">/ 100</span>
+      </p>
+      <div className="mt-3 h-3 bg-track">
+        <div
+          className="h-full bg-mark"
+          style={{
+            width: `${data.vibeCheckScore}%`,
+            transformOrigin: "left",
+            animation: "grow-x 1.1s cubic-bezier(0.2,0.7,0.2,1) both",
+          }}
+        />
+      </div>
+      <dl className="relative mt-6 grid grid-cols-2 gap-x-4 gap-y-3 border-t border-line pt-4">
+        {facts.map((fact) => (
+          <div key={fact.label}>
+            <dt className="text-xs text-muted-foreground">{fact.label}</dt>
+            <dd className="font-semibold capitalize">{fact.value}</dd>
           </div>
+        ))}
+      </dl>
+      <p className="relative mt-4 text-xs text-muted-foreground">
+        A playful score from positivity, balance and consistency. Not a scientific measure.
+      </p>
+    </Panel>
+  )
+}
 
-          {/* Communication Style / Love Language */}
-          <div className="p-5 rounded-2xl bg-gradient-to-br from-violet-50 via-purple-50 to-fuchsia-50 border border-violet-200">
-            <div className="flex items-center gap-2 mb-3">
-              <Heart className="h-5 w-5 text-violet-500" />
-              <span className="text-sm font-medium text-violet-700">Your Love Language</span>
-            </div>
-            <p className="text-lg font-bold text-violet-900 mb-3">{data.communicationStyle.loveLanguage}</p>
-            <div className="space-y-2 text-xs">
-              <div className="flex justify-between">
-                <span className="text-violet-600">Message Style</span>
-                <span className="font-medium text-violet-800 capitalize">
-                  {data.communicationStyle.avgMessageLength}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-violet-600">Emoji Usage</span>
-                <span className="font-medium text-violet-800 capitalize">{data.communicationStyle.emojiUsage}</span>
-              </div>
-              {data.communicationStyle.callVsText > 0 && (
-                <div className="flex justify-between">
-                  <span className="text-violet-600">Call Preference</span>
-                  <span className="font-medium text-violet-800">{data.communicationStyle.callVsText}%</span>
-                </div>
-              )}
-            </div>
+export function EnergyPanel({ data, participants, tone = "ink", className, delay }: ScoreProps) {
+  const match = data.energyMatch
+  const peaks = [match.peakHourA, match.peakHourB]
+
+  return (
+    <Panel title="Energy match" aside={<Tag>{match.matchType}</Tag>} tone={tone} className={className} delay={delay}>
+      <p className="display text-7xl tabular-nums sm:text-8xl">{match.score}%</p>
+      <p className="mt-2 text-sm text-muted-foreground">overlap in the hours you are each most active</p>
+
+      {/* 24-hour track with each person's peak hour marked: first person above, second below */}
+      <div className="relative mx-[8%] mt-14 h-1 bg-track">
+        {peaks.map((hour, i) => (
+          <div
+            key={i}
+            className={`absolute flex -translate-x-1/2 items-center ${i === 0 ? "-top-8 flex-col" : "-top-1.5 flex-col-reverse"}`}
+            style={{ left: `${(hour / 23) * 100}%` }}
+          >
+            <span className="my-1 whitespace-nowrap text-xs font-semibold" style={{ color: PERSON[i] }}>
+              {firstName(participants[i])} &middot; {formatHour(hour)}
+            </span>
+            <span className="size-4 rounded-full" style={{ background: PERSON[i] }} />
           </div>
+        ))}
+      </div>
+      <div className="mx-[8%] mt-10 flex justify-between text-[11px] text-muted-foreground">
+        {[0, 6, 12, 18, 23].map((hour) => (
+          <span key={hour}>{formatHour(hour)}</span>
+        ))}
+      </div>
+    </Panel>
+  )
+}
+
+const WEEKS = 26
+const DAY = 24 * 60 * 60 * 1000
+
+export function HeatmapPanel({ data, tone = "ink", className, delay }: ScoreProps) {
+  const [hover, setHover] = useState<{ w: number; d: number } | null>(null)
+  const keys = Object.keys(data.dailyActivityMap).sort()
+  if (keys.length === 0) return null
+  const max = Math.max(...Object.values(data.dailyActivityMap), 1)
+
+  // Build whole weeks (Sunday first) ending on the week of the last message.
+  const last = new Date(`${keys[keys.length - 1]}T00:00:00Z`)
+  const end = last.getTime() + (6 - last.getUTCDay()) * DAY
+  const weeks = Array.from({ length: WEEKS }, (_, w) =>
+    Array.from({ length: 7 }, (_, d) => {
+      const time = end - ((WEEKS - 1 - w) * 7 + (6 - d)) * DAY
+      const key = new Date(time).toISOString().split("T")[0]
+      return { key, count: data.dailyActivityMap[key] || 0, future: time > last.getTime() }
+    }),
+  )
+
+  const active = hover && !weeks[hover.w][hover.d].future ? weeks[hover.w][hover.d] : null
+
+  return (
+    <Panel
+      title="Consistency"
+      aside={data.consistencyStreak > 1 ? <Tag>{data.consistencyStreak} day streak</Tag> : undefined}
+      tone={tone}
+      className={className}
+      delay={delay}
+    >
+      <div className="grid gap-6 lg:grid-cols-[14rem_1fr] lg:items-end">
+        <div>
+          <p className="display text-7xl tabular-nums sm:text-8xl">{data.consistencyScore}%</p>
+          <p className="mt-2 text-sm text-muted-foreground">consistency score across the whole chat</p>
         </div>
+        <div>
+          <div
+            className="relative flex gap-[3px] sm:gap-1"
+            role="img"
+            aria-label="Daily message activity for the last 26 weeks"
+            onMouseLeave={() => setHover(null)}
+          >
+            {weeks.map((week, w) => (
+              <div key={w} className="flex flex-1 flex-col gap-[3px] sm:gap-1">
+                {week.map((day, d) => (
+                  <div
+                    key={day.key}
+                    onMouseEnter={() => setHover({ w, d })}
+                    onClick={() => setHover({ w, d })}
+                    className="aspect-square w-full"
+                    style={{
+                      ...(day.future
+                        ? { opacity: 0 }
+                        : day.count === 0
+                          ? { background: "var(--track)" }
+                          : { background: "var(--yellow)", opacity: 0.3 + (day.count / max) * 0.7 }),
+                      ...(active === day ? { opacity: 1, outline: "2px solid var(--cream)", outlineOffset: 1 } : {}),
+                    }}
+                  />
+                ))}
+              </div>
+            ))}
 
-        {/* Consistency Score with Heatmap */}
-        <div className="p-5 rounded-2xl bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <Calendar className="h-5 w-5 text-emerald-500" />
-              <span className="text-sm font-medium text-emerald-700">Consistency Score</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-2xl font-bold text-emerald-600">{data.consistencyScore}%</span>
-              {data.consistencyStreak > 1 && (
-                <span className="text-xs px-2 py-1 bg-emerald-100 text-emerald-700 rounded-full">
-                  {data.consistencyStreak} day streak
-                </span>
-              )}
-            </div>
+            {/* Readout for the hovered day. It sits below the top rows and above the rest, and is pinned
+                to the nearer edge at either end so it never leaves the grid. */}
+            {active && hover && (
+              <div
+                className="pointer-events-none absolute z-10 whitespace-nowrap rounded-xl bg-cream px-3.5 py-2.5 text-ink"
+                style={{
+                  ...(hover.d < 3
+                    ? { top: `calc(${((hover.d + 1) / 7) * 100}% + 6px)` }
+                    : { bottom: `calc(${((7 - hover.d) / 7) * 100}% + 6px)` }),
+                  ...(hover.w < 4
+                    ? { left: `${(hover.w / WEEKS) * 100}%` }
+                    : hover.w > WEEKS - 5
+                      ? { right: `${((WEEKS - 1 - hover.w) / WEEKS) * 100}%` }
+                      : { left: `${((hover.w + 0.5) / WEEKS) * 100}%`, transform: "translateX(-50%)" }),
+                }}
+              >
+                <p className="eyebrow opacity-60">
+                  {new Date(`${active.key}T00:00:00Z`).toLocaleDateString("en-US", {
+                    weekday: "short",
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                    timeZone: "UTC",
+                  })}
+                </p>
+                <p className="display mt-1 text-3xl tabular-nums">
+                  {active.count.toLocaleString()}
+                  <span className="ml-1.5 text-sm font-semibold tracking-normal">
+                    {active.count === 1 ? "message" : "messages"}
+                  </span>
+                </p>
+              </div>
+            )}
           </div>
-
-          {/* Mini Heatmap */}
-          <div className="mt-4">
-            <p className="text-xs text-emerald-600 mb-2">Recent Activity</p>
-            <div className="flex flex-wrap gap-1">
-              {sortedDates.map((date) => (
-                <div
-                  key={date}
-                  className={`w-3 h-3 rounded-sm ${getIntensityClass(data.dailyActivityMap[date] || 0)}`}
-                  title={`${date}: ${data.dailyActivityMap[date] || 0} messages`}
-                />
+          <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
+            <span>Last 26 weeks, one square per day</span>
+            <span className="flex items-center gap-1">
+              Less
+              {[0.3, 0.55, 0.8, 1].map((o) => (
+                <span key={o} className="size-3 bg-yellow" style={{ opacity: o }} />
               ))}
-            </div>
-            <div className="flex items-center justify-end gap-1 mt-2 text-xs text-emerald-600">
-              <span>Less</span>
-              <div className="w-3 h-3 rounded-sm bg-primary/20" />
-              <div className="w-3 h-3 rounded-sm bg-primary/40" />
-              <div className="w-3 h-3 rounded-sm bg-primary/70" />
-              <div className="w-3 h-3 rounded-sm bg-primary" />
-              <span>More</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Energy Match */}
-        <div className="p-5 rounded-2xl bg-gradient-to-br from-amber-50 via-yellow-50 to-orange-50 border border-amber-200">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <Zap className="h-5 w-5 text-amber-500" />
-              <span className="text-sm font-medium text-amber-700">Energy Match</span>
-            </div>
-            <span className="text-xs px-3 py-1 bg-amber-100 text-amber-700 rounded-full font-medium">
-              {data.energyMatch.matchType}
+              More
             </span>
           </div>
-
-          <div className="flex items-center justify-between gap-4">
-            {/* Person A */}
-            <div className="flex-1 text-center">
-              <p className="text-xs text-amber-600 mb-1 truncate">{participants[0]?.split(" ")[0]}</p>
-              <div className="flex items-center justify-center gap-1">
-                <Clock className="h-3 w-3 text-amber-500" />
-                <span className="text-sm font-semibold text-amber-800">{formatHour(data.energyMatch.peakHourA)}</span>
-              </div>
-            </div>
-
-            {/* Match Indicator */}
-            <div className="flex flex-col items-center">
-              <div className="relative w-16 h-16">
-                <svg className="w-full h-full transform -rotate-90">
-                  <circle cx="32" cy="32" r="28" stroke="#fef3c7" strokeWidth="6" fill="none" />
-                  <circle
-                    cx="32"
-                    cy="32"
-                    r="28"
-                    stroke="#f59e0b"
-                    strokeWidth="6"
-                    fill="none"
-                    strokeLinecap="round"
-                    strokeDasharray={`${data.energyMatch.score * 1.76} 176`}
-                  />
-                </svg>
-                <span className="absolute inset-0 flex items-center justify-center text-sm font-bold text-amber-600">
-                  {data.energyMatch.score}%
-                </span>
-              </div>
-            </div>
-
-            {/* Person B */}
-            <div className="flex-1 text-center">
-              <p className="text-xs text-amber-600 mb-1 truncate">{participants[1]?.split(" ")[0]}</p>
-              <div className="flex items-center justify-center gap-1">
-                <Clock className="h-3 w-3 text-amber-500" />
-                <span className="text-sm font-semibold text-amber-800">{formatHour(data.energyMatch.peakHourB)}</span>
-              </div>
-            </div>
-          </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </Panel>
   )
 }
